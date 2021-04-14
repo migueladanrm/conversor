@@ -14,4 +14,4 @@ COPY . .
 EXPOSE 7000
 
 # command to run on container start
-CMD [ "python", "./app.py" ]
+CMD [ "python", "./app.py", "--port", "7000"  ]
