@@ -3,6 +3,8 @@ import sys
 import socket
 import os
 import tqdm
+import ffmpeg
+import threading
 
 
 SERVER_HOST = "0.0.0.0"
@@ -41,8 +43,6 @@ def handle_request(client_socket, client_address):
     else:
         client_socket.close()
     print("Connection finished successfuly!")
-    # s.close()
-
 
 if __name__ == "__main__":
     s = socket.socket()
