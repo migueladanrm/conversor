@@ -1,39 +1,7 @@
-'''
-import socket
-import sys
-
-port = 7000
-ip = "35.222.58.153"
-#client.connect(ip)
-#client.emit('my message', {'foo': 'bar'})
-
-def client():
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    address = (ip, port)
-    sock.connect(address)
-    message = "Envía la retrasada"
-    sock.sendto(message.encode('utf-8'),(ip, port))
-    amount_received = 0
-    amount_expected = len(message)
-    while amount_received < amount_expected:
-        print("Miguel")
-        data = sock.recv(16)
-        amount_received += len(data)
-
-client()
-
-if len(sys.argv) == 2:
-    texto = sys.argv[1]
-    print(texto)
-
-'''
-
 import socket
 import tqdm
 import os
 from argparse import ArgumentParser
-import sys
-
 import time
 
 
@@ -52,8 +20,6 @@ parser.add_argument("-o", "--output", metavar="output", help="The output file")
 
 
 args = parser.parse_args()
-
-# print(args)
 
 SEPARATOR = "|"
 BUFFER_SIZE = 1024
@@ -80,9 +46,6 @@ print(f"Connecting to {SERVER_HOST}:{SERVER_PORT}")
 s.connect((SERVER_HOST, SERVER_PORT))
 
 print("Connected.\n")
-
-# s.setblocking(False)
-
 
 task_id = ""
 
@@ -116,7 +79,6 @@ if action == ACTION_UPLOAD_FILE:
 
                 progress.update(len(bytes_read))
         finally:
-            print("Michelle")
             progress.close()
             s.close()
 
@@ -128,9 +90,17 @@ if action == ACTION_UPLOAD_FILE:
     s.connect((SERVER_HOST, SERVER_PORT))
     s.send(f"{ACTION_RETRIEVE_FILE}{SEPARATOR}{task_id}".encode())
 
-    task_info = s.recv(BUFFER_SIZE)
+    t_id, t_source, t_format, t_start, server_time = s.recv(
+        BUFFER_SIZE).decode().split(SEPARATOR)
 
-    print(task_info.decode())
+    print(f"Connected to {SERVER_HOST}:{SERVER_PORT} | Server time: {server_time}\nConversion task running -- {task_id}\tStart: {t_start}\nInput: {t_source}\tTarget format: {t_format}")
+
+    t_finish, output_length = s.recv(BUFFER_SIZE).decode().split(SEPARATOR)
+
+    print(f"Conversion finished at {t_finish}")
+
+    progress = tqdm.tqdm(range(
+        int(output_length)), f"Receiving converted file...", unit="B", unit_scale=True, unit_divisor=1024)
 
     with open(output_file, "wb") as f:
         try:
@@ -140,27 +110,10 @@ if action == ACTION_UPLOAD_FILE:
                     break
 
                 f.write(bytes_read)
+
+                progress.update(len(bytes_read))
         finally:
-            print("michelle")
+            progress.close()
             s.close()
 
-    print("HECHO!!!")
-    # print(s.recv(BUFFER_SIZE).decode())
-    # s.close()
-    #tmp = s.recv(BUFFER_SIZE).decode()
-
-    # print(tmp)
-    # while True:
-    #     if tmp == "converting":
-    #         #print("Converting file...", sep=' ', end='', flush=True)
-    #         print("Converting file...");
-    #     else:
-    #         break
-
-    # done = s.recv(BUFFER_SIZE)
-    # if done == "done":
-    #     s.close()
-
-    # wait for conversion...
-    # close the socket
-    # s.close()
+    print(f"Converted file has been saved as {output_file}")

@@ -27,15 +27,6 @@ ACTION_UPLOAD_FILE = "upload-file"
 ACTION_RETRIEVE_FILE = "retrieve-file"
 
 tasks = []
-entry = {
-    "id": "0x4932423",
-
-    "source_file": "video.mp4",
-    "source_file_length": 2943474,
-    "target_format": "ogg",
-    "conversion_started_at": "",
-    "conversion_finished_at": ""
-}
 
 print("Server is listening...")
 
@@ -111,7 +102,6 @@ def handle_request(connection: socket.socket):
 
                     f.write(bytes_read)
             finally:
-                print("michelle")
                 connection.close()
 
         task_set({
@@ -130,13 +120,14 @@ def handle_request(connection: socket.socket):
 
         tmp_task = task_get(task_id)
         connection.send(
-            f'{task_id}{SEPARATOR}{tmp_task["file_name"]}{SEPARATOR}{tmp_task["target_format"]}{SEPARATOR}{tmp_task["conversion_start"]}'.encode())
+            f'{task_id}{SEPARATOR}{tmp_task["file_name"]}{SEPARATOR}{tmp_task["target_format"]}{SEPARATOR}{tmp_task["conversion_start"]}{SEPARATOR}{datetime.utcnow()}'.encode())
 
         while True:
             if task_get(task_id)["conversion_end"] != None:
                 break
-            else:
-                print("not yet!")
+
+        connection.send(
+            f'{datetime.utcnow()}{SEPARATOR}{os.path.getsize(task_get(task_id)["output_file"])}'.encode())
 
         with open(task_get(task_id)["output_file"], "rb") as f:
             try:
@@ -151,6 +142,7 @@ def handle_request(connection: socket.socket):
                 print("Michelle")
                 connection.close()
 
+
 while True:
     connection, client_info = ServerSocket.accept()
     print(f"Connected to {client_info[0]}:{client_info[1]}")
@@ -158,5 +150,3 @@ while True:
     print(tasks)
 
     _thread.start_new_thread(handle_request, (connection,))
-
-# ServerSocket.close()
