@@ -34,13 +34,17 @@ import os
 from argparse import ArgumentParser
 import sys
 
+import time
+
+
 def printFormats():
     file = open('formats.txt', 'r')
     text = file.read()
     print(text)
     file.close()
 
-printFormats()
+
+# printFormats()
 parser = ArgumentParser()
 parser.add_argument("-f", "--file", metavar="file", help="The media file.")
 parser.add_argument("-ft", "--format", metavar="file", help="The media file.")
@@ -50,37 +54,97 @@ args = parser.parse_args()
 
 SEPARATOR = "|"
 BUFFER_SIZE = 1024
-SERVER_HOST = "35.222.58.153"
+#SERVER_HOST = "35.222.58.153"
+SERVER_HOST = "127.0.0.1"
 SERVER_PORT = 7000
+
+ACTION_SHOW_HISTORY = "show-history"
+ACTION_CONVERT_FILE = "convert-file"
 
 filename = args.file
 filesize = os.path.getsize(filename)
 
-s = socket.socket()
+action = ACTION_CONVERT_FILE
 
-print(f"[+] Connecting to {SERVER_HOST}:{SERVER_PORT}")
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+print(f"Connecting to {SERVER_HOST}:{SERVER_PORT}")
 
 s.connect((SERVER_HOST, SERVER_PORT))
 
-print("[+] Connected.")
+print("Connected.\n")
 
-# send the filename and filesize
-s.send(f"{filename}{SEPARATOR}{filesize}{SEPARATOR}MIGUEL".encode())
+#s.setblocking(False)
 
-# start sending the file
-progress = tqdm.tqdm(range(
-    filesize), f"Sending {filename}", unit="B", unit_scale=True, unit_divisor=1024)
-with open(filename, "rb") as f:
-    while True:
-        # read the bytes from the file
-        bytes_read = f.read(BUFFER_SIZE)
-        if not bytes_read:
-            # file transmitting is done
-            break
-        # we use sendall to assure transimission in
-        # busy networks
-        s.sendall(bytes_read)
-        # update the progress bar
-        progress.update(len(bytes_read))
-# close the socket
-s.close()
+if action == ACTION_SHOW_HISTORY:
+    s.send(f"{action}{SEPARATOR}".encode())
+
+    data = s.recv(BUFFER_SIZE*8)
+
+    print(data.decode())
+
+    s.close()
+
+if action == ACTION_CONVERT_FILE:
+    s.send(
+        f"{action}{SEPARATOR}{filename}{SEPARATOR}{filesize}{SEPARATOR}avi".encode())
+
+    progress = tqdm.tqdm(range(
+        filesize), f"Sending {filename}", unit="B", unit_scale=True, unit_divisor=1024)
+
+    with open(filename, "rb") as f:
+        try:
+            while True:
+                bytes_read = f.read(BUFFER_SIZE)
+
+                if not bytes_read:
+                    break
+
+                s.sendall(bytes_read)
+
+                #tmp = s.recv(BUFFER_SIZE)
+                #print(tmp.decode())
+
+                progress.update(len(bytes_read))
+        finally:
+            #tmp = s.recv(BUFFER_SIZE).decode()
+            #print(tmp)
+            #s.close()
+            print("Michelle")
+            f.close()
+
+        # time.sleep(1)
+        print("File uploaded! Waiting for conversion...")
+
+        # s.close()
+
+        while True:
+            tmp = s.recv(BUFFER_SIZE)
+
+            if tmp:
+                print(tmp.decode())
+                break
+        
+        print("hola")
+
+        
+
+    # print(s.recv(BUFFER_SIZE).decode())
+    # s.close()
+    #tmp = s.recv(BUFFER_SIZE).decode()
+
+    # print(tmp)
+    # while True:
+    #     if tmp == "converting":
+    #         #print("Converting file...", sep=' ', end='', flush=True)
+    #         print("Converting file...");
+    #     else:
+    #         break
+
+    # done = s.recv(BUFFER_SIZE)
+    # if done == "done":
+    #     s.close()
+
+    # wait for conversion...
+    # close the socket
+    # s.close()
