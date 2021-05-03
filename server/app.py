@@ -22,12 +22,14 @@ SEPARATOR = "|"
 MAX_CONNECTIONS = 10
 TEMP_DIR = "/tmp"
 
-ACTION_SHOW_HISTORY = "show-history"
-ACTION_CONVERT_FILE = "convert-file"
+ACTION_SHOW_TASKS = "show-tasks"
+ACTION_UPLOAD_FILE = "upload-file"
+ACTION_RETRIEVE_FILE = "retrieve-file"
 
-history = []
+tasks = []
 entry = {
     "id": "0x4932423",
+
     "source_file": "video.mp4",
     "source_file_length": 2943474,
     "target_format": "ogg",
@@ -47,90 +49,113 @@ except socket.error as e:
 ServerSocket.listen(5)
 
 
-def history_get(id):
-    for i in len(history):
-        if(history[i]["id"] == id):
-            return history[i]
+def task_get(id):
+    for i in range(len(tasks)):
+        if(tasks[i]["id"] == id):
+            return tasks[i]
 
 
-def history_set(data):
-    for i in len(history):
-        if(history[i]["id"] == data["id"]):
-            history.pop(i)
+def task_set(t):
+    for i in range(len(tasks)):
+        if(tasks[i]["id"] == t["id"]):
+            tasks.pop(i)
             break
 
-    history.append(data)
+    tasks.append(t)
+
+
+def convert_file(task_id):
+    task = task_get(task_id)
+    task["conversion_start"] = datetime.utcnow()
+
+    task_set(task)
+
+    output_file = file_manager.generate_file_ref(
+        f'output.{task["target_format"]}')
+
+    cmd = ["ffmpeg", "-i", task["input_file"], output_file]
+
+    p = subprocess.Popen(cmd, stdout=subprocess.DEVNULL)
+    p.wait()
+
+    task["conversion_end"] = datetime.utcnow()
+    task["output_file"] = output_file
+
+    task_set(task)
 
 
 def handle_request(connection: socket.socket):
     raw = connection.recv(BUFFER_SIZE).decode()
     action = raw.split(SEPARATOR)[0]
 
-    if action == ACTION_SHOW_HISTORY:
+    if action == ACTION_SHOW_TASKS:
         connection.sendall("No hay archivos pendientes.".encode())
         connection.close()
-    elif action == ACTION_CONVERT_FILE:
+    elif action == ACTION_UPLOAD_FILE:
         _, file_name, file_size, target_format = raw.split(SEPARATOR)
 
-        session_id = str(uuid4())[:4]
+        task_id = str(uuid4())[:4]
+
+        connection.sendall(task_id.encode())
+
         file_name = os.path.basename(file_name)
         file_size = int(file_size)
+        tmp_file = file_manager.generate_file_ref(file_name)
 
-        # if file_name and file_size and target_format:
-
-        #print(f"Receiving file '{file_name}' ({file_size} bytes)...")
-
-        original_file = file_manager.generate_file_ref(file_name)
-
-        with open(original_file, "wb") as f:
+        with open(tmp_file, "wb") as f:
             try:
                 while True:
-                    #connection.sendall("receiving file...".encode())
                     bytes_read = connection.recv(BUFFER_SIZE)
                     if not bytes_read:
                         break
 
                     f.write(bytes_read)
             finally:
-                #connection.close()
                 print("michelle")
-                #f.close()
-        time.sleep(1)
+                connection.close()
 
-
-        connection.sendall("converting".encode())
-
-        history_entry = {
-            "id": session_id,
-            "input_file": file_name,
+        task_set({
+            "id": task_id,
+            "file_name": file_name,
+            "input_file": tmp_file,
             "target_format": target_format,
-            "conversion_start": datetime.utcnow(),
-            "conversion_end": "",
-            "output_file":""
-        }
-        history_set(history_entry)
+            "conversion_start": None,
+            "conversion_end": None,
+            "output_file": None
+        })
 
-        output_file = file_manager.generate_file_ref("out.{target_format}")
+        _thread.start_new_thread(convert_file, (task_id, ))
+    elif action == ACTION_RETRIEVE_FILE:
+        _, task_id = raw.split(SEPARATOR)
 
-        cmd = ["ffmpeg", "-i", original_file, output_file]
+        tmp_task = task_get(task_id)
+        connection.send(
+            f'{task_id}{SEPARATOR}{tmp_task["file_name"]}{SEPARATOR}{tmp_task["target_format"]}{SEPARATOR}{tmp_task["conversion_start"]}'.encode())
 
-        ffmpeg_process = subprocess.Popen(cmd, stdout=subprocess.DEVNULL)
-        #ffmpeg_process.wait()
+        while True:
+            if task_get(task_id)["conversion_end"] != None:
+                break
+            else:
+                print("not yet!")
 
-        while ffmpeg_process.returncode == None:
-            connection.sendall("converting".encode())
+        with open(task_get(task_id)["output_file"], "rb") as f:
+            try:
+                while True:
+                    bytes_read = f.read(BUFFER_SIZE)
 
-        history_entry["conversion_end"] = datetime.utcnow()
-        history_set(history_entry)
+                    if not bytes_read:
+                        break
 
-        connection.send("done".encode())
-
-        connection.close()
-
+                    connection.sendall(bytes_read)
+            finally:
+                print("Michelle")
+                connection.close()
 
 while True:
     connection, client_info = ServerSocket.accept()
     print(f"Connected to {client_info[0]}:{client_info[1]}")
+
+    print(tasks)
 
     _thread.start_new_thread(handle_request, (connection,))
 

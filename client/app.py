@@ -46,11 +46,14 @@ def printFormats():
 
 # printFormats()
 parser = ArgumentParser()
-parser.add_argument("-f", "--file", metavar="file", help="The media file.")
-parser.add_argument("-ft", "--format", metavar="file", help="The media file.")
+parser.add_argument("-i", "--input", metavar="input", help="The media file.")
+parser.add_argument("-f", "--format", metavar="format", help="The media file.")
+parser.add_argument("-o", "--output", metavar="output", help="The output file")
 
 
 args = parser.parse_args()
+
+# print(args)
 
 SEPARATOR = "|"
 BUFFER_SIZE = 1024
@@ -58,13 +61,17 @@ BUFFER_SIZE = 1024
 SERVER_HOST = "127.0.0.1"
 SERVER_PORT = 7000
 
-ACTION_SHOW_HISTORY = "show-history"
-ACTION_CONVERT_FILE = "convert-file"
+ACTION_SHOW_TASKS = "show-tasks"
+ACTION_UPLOAD_FILE = "upload-file"
+ACTION_RETRIEVE_FILE = "retrieve-file"
 
-filename = args.file
-filesize = os.path.getsize(filename)
+input_file = args.input
+target_format = args.format
+output_file = args.output
 
-action = ACTION_CONVERT_FILE
+filesize = os.path.getsize(input_file)
+
+action = ACTION_UPLOAD_FILE
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -74,9 +81,12 @@ s.connect((SERVER_HOST, SERVER_PORT))
 
 print("Connected.\n")
 
-#s.setblocking(False)
+# s.setblocking(False)
 
-if action == ACTION_SHOW_HISTORY:
+
+task_id = ""
+
+if action == ACTION_SHOW_TASKS:
     s.send(f"{action}{SEPARATOR}".encode())
 
     data = s.recv(BUFFER_SIZE*8)
@@ -85,14 +95,16 @@ if action == ACTION_SHOW_HISTORY:
 
     s.close()
 
-if action == ACTION_CONVERT_FILE:
+if action == ACTION_UPLOAD_FILE:
     s.send(
-        f"{action}{SEPARATOR}{filename}{SEPARATOR}{filesize}{SEPARATOR}avi".encode())
+        f"{action}{SEPARATOR}{input_file}{SEPARATOR}{filesize}{SEPARATOR}{target_format}".encode())
+
+    task_id = s.recv(BUFFER_SIZE).decode()
 
     progress = tqdm.tqdm(range(
-        filesize), f"Sending {filename}", unit="B", unit_scale=True, unit_divisor=1024)
+        filesize), f"Sending {input_file}", unit="B", unit_scale=True, unit_divisor=1024)
 
-    with open(filename, "rb") as f:
+    with open(input_file, "rb") as f:
         try:
             while True:
                 bytes_read = f.read(BUFFER_SIZE)
@@ -102,33 +114,37 @@ if action == ACTION_CONVERT_FILE:
 
                 s.sendall(bytes_read)
 
-                #tmp = s.recv(BUFFER_SIZE)
-                #print(tmp.decode())
-
                 progress.update(len(bytes_read))
         finally:
-            #tmp = s.recv(BUFFER_SIZE).decode()
-            #print(tmp)
-            #s.close()
             print("Michelle")
-            f.close()
+            progress.close()
+            s.close()
 
-        # time.sleep(1)
         print("File uploaded! Waiting for conversion...")
 
-        # s.close()
+        time.sleep(1)
 
-        while True:
-            tmp = s.recv(BUFFER_SIZE)
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.connect((SERVER_HOST, SERVER_PORT))
+    s.send(f"{ACTION_RETRIEVE_FILE}{SEPARATOR}{task_id}".encode())
 
-            if tmp:
-                print(tmp.decode())
-                break
-        
-        print("hola")
+    task_info = s.recv(BUFFER_SIZE)
 
-        
+    print(task_info.decode())
 
+    with open(output_file, "wb") as f:
+        try:
+            while True:
+                bytes_read = s.recv(BUFFER_SIZE)
+                if not bytes_read:
+                    break
+
+                f.write(bytes_read)
+        finally:
+            print("michelle")
+            s.close()
+
+    print("HECHO!!!")
     # print(s.recv(BUFFER_SIZE).decode())
     # s.close()
     #tmp = s.recv(BUFFER_SIZE).decode()
