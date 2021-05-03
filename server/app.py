@@ -1,26 +1,15 @@
-import argparse
 from datetime import datetime
-import sys
-import socket
-import os
 from uuid import uuid4
-import tqdm
-import ffmpeg
-import threading
-import socketserver
 import _thread
+import os
+import socket
 import subprocess
 
-import file_manager
-import time
-
-
-SERVER_HOST = "0.0.0.0"
-SERVER_PORT = 7000
 BUFFER_SIZE = 1024
 SEPARATOR = "|"
-MAX_CONNECTIONS = 10
-TEMP_DIR = "/tmp"
+SERVER_HOST = "0.0.0.0"
+SERVER_PORT = 7000
+STORE_PATH = "/tmp"
 
 ACTION_SHOW_TASKS = "show-tasks"
 ACTION_UPLOAD_FILE = "upload-file"
@@ -55,13 +44,17 @@ def task_set(t):
     tasks.append(t)
 
 
+def generate_file_ref(file_name):
+    return f"{STORE_PATH}/{str(uuid4())[:8]}_{file_name}"
+
+
 def convert_file(task_id):
     task = task_get(task_id)
     task["conversion_start"] = datetime.utcnow()
 
     task_set(task)
 
-    output_file = file_manager.generate_file_ref(
+    output_file = generate_file_ref(
         f'output.{task["target_format"]}')
 
     cmd = ["ffmpeg", "-i", task["input_file"], output_file]
@@ -80,7 +73,14 @@ def handle_request(connection: socket.socket):
     action = raw.split(SEPARATOR)[0]
 
     if action == ACTION_SHOW_TASKS:
-        connection.sendall("No hay archivos pendientes.".encode())
+        result = ""
+        if len(tasks) < 1:
+            result = "There aren't files in the queue."
+        else:
+            for t in tasks:
+                result = f'Id: {t["id"]}\tInput file: {t["file_name"]}\tTarget format: {t["target_format"]}\tStart: {t["conversion_start"]}\tEnd: {t["conversion_end"]}\n'
+
+        connection.sendall(result.encode())
         connection.close()
     elif action == ACTION_UPLOAD_FILE:
         _, file_name, file_size, target_format = raw.split(SEPARATOR)
@@ -91,7 +91,7 @@ def handle_request(connection: socket.socket):
 
         file_name = os.path.basename(file_name)
         file_size = int(file_size)
-        tmp_file = file_manager.generate_file_ref(file_name)
+        tmp_file = generate_file_ref(file_name)
 
         with open(tmp_file, "wb") as f:
             try:
@@ -139,14 +139,10 @@ def handle_request(connection: socket.socket):
 
                     connection.sendall(bytes_read)
             finally:
-                print("Michelle")
                 connection.close()
 
 
 while True:
     connection, client_info = ServerSocket.accept()
-    print(f"Connected to {client_info[0]}:{client_info[1]}")
-
-    print(tasks)
 
     _thread.start_new_thread(handle_request, (connection,))

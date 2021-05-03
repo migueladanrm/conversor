@@ -1,8 +1,8 @@
-import socket
-import tqdm
-import os
 from argparse import ArgumentParser
+import os
+import socket
 import time
+import tqdm
 
 
 def printFormats():
@@ -12,12 +12,13 @@ def printFormats():
     file.close()
 
 
-# printFormats()
 parser = ArgumentParser()
-parser.add_argument("-i", "--input", metavar="input", help="The media file.")
-parser.add_argument("-f", "--format", metavar="format", help="The media file.")
-parser.add_argument("-o", "--output", metavar="output", help="The output file")
-
+parser.add_argument("-i", "--input", metavar="input",
+                    help="The input media file.")
+parser.add_argument("-f", "--format", metavar="format",
+                    help="The target format.")
+parser.add_argument("-o", "--output", metavar="output",
+                    help="The output converted file.")
 
 args = parser.parse_args()
 
@@ -35,10 +36,10 @@ input_file = args.input
 target_format = args.format
 output_file = args.output
 
-filesize = os.path.getsize(input_file)
+file_size = os.path.getsize(input_file)
 
-action = ACTION_UPLOAD_FILE
-
+action = ACTION_SHOW_TASKS
+#action = ACTION_UPLOAD_FILE 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 print(f"Connecting to {SERVER_HOST}:{SERVER_PORT}")
@@ -60,12 +61,12 @@ if action == ACTION_SHOW_TASKS:
 
 if action == ACTION_UPLOAD_FILE:
     s.send(
-        f"{action}{SEPARATOR}{input_file}{SEPARATOR}{filesize}{SEPARATOR}{target_format}".encode())
+        f"{action}{SEPARATOR}{input_file}{SEPARATOR}{file_size}{SEPARATOR}{target_format}".encode())
 
     task_id = s.recv(BUFFER_SIZE).decode()
 
     progress = tqdm.tqdm(range(
-        filesize), f"Sending {input_file}", unit="B", unit_scale=True, unit_divisor=1024)
+        file_size), f"Sending {input_file}", unit="B", unit_scale=True, unit_divisor=1024)
 
     with open(input_file, "rb") as f:
         try:
