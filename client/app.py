@@ -4,42 +4,59 @@ import socket
 import time
 import tqdm
 
-
 def printFormats():
     file = open('formats.txt', 'r')
     text = file.read()
     print(text)
     file.close()
 
-
 parser = ArgumentParser()
-parser.add_argument("-i", "--input", metavar="input",
-                    help="The input media file.")
-parser.add_argument("-f", "--format", metavar="format",
-                    help="The target format.")
-parser.add_argument("-o", "--output", metavar="output",
-                    help="The output converted file.")
+parser= ArgumentParser(prog='PROG', add_help=False)
+subparsers = parser.add_subparsers(help = "Commands")
+
+group1 = subparsers.add_parser("upload", help="upload file")
+group1.add_argument("-i", "--input", metavar="input", help="The input media file.")
+group1.add_argument("-f", "--format", metavar="format", help="The target format.") 
+group1.add_argument("-o", "--output", metavar="output", help="The output converted file.")
+group1.set_defaults(group=1)
+
+group2 = subparsers.add_parser("tasks", help="show tasks")
+group2.set_defaults(group=2)
+
+group3 = subparsers.add_parser("formats",help="see formats")
+group3.set_defaults(group=3)
+
+group4 = subparsers.add_parser("help", help="help commands")
+group4.set_defaults(group=4)
 
 args = parser.parse_args()
 
+parser.print_help()
 SEPARATOR = "|"
 BUFFER_SIZE = 1024
-#SERVER_HOST = "35.222.58.153"
-SERVER_HOST = "127.0.0.1"
+SERVER_HOST = "35.222.58.153"
 SERVER_PORT = 7000
 
 ACTION_SHOW_TASKS = "show-tasks"
 ACTION_UPLOAD_FILE = "upload-file"
 ACTION_RETRIEVE_FILE = "retrieve-file"
 
-input_file = args.input
-target_format = args.format
-output_file = args.output
+action = ""
 
-file_size = os.path.getsize(input_file)
+if args.group == 1:
+    input_file = args.input
+    target_format = args.format
+    output_file = args.output
+    file_size = os.path.getsize(input_file)
+    action = ACTION_UPLOAD_FILE 
 
-action = ACTION_SHOW_TASKS
-#action = ACTION_UPLOAD_FILE 
+elif args.group == 2:
+    action = ACTION_SHOW_TASKS
+elif args.group==3:
+    printFormats()
+else:
+    parser.print_help()
+
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 print(f"Connecting to {SERVER_HOST}:{SERVER_PORT}")
@@ -47,16 +64,12 @@ print(f"Connecting to {SERVER_HOST}:{SERVER_PORT}")
 s.connect((SERVER_HOST, SERVER_PORT))
 
 print("Connected.\n")
-
 task_id = ""
 
 if action == ACTION_SHOW_TASKS:
     s.send(f"{action}{SEPARATOR}".encode())
-
     data = s.recv(BUFFER_SIZE*8)
-
     print(data.decode())
-
     s.close()
 
 if action == ACTION_UPLOAD_FILE:
@@ -85,7 +98,7 @@ if action == ACTION_UPLOAD_FILE:
 
         print("File uploaded! Waiting for conversion...")
 
-        time.sleep(1)
+        time.sleep(2)
 
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect((SERVER_HOST, SERVER_PORT))
@@ -111,7 +124,6 @@ if action == ACTION_UPLOAD_FILE:
                     break
 
                 f.write(bytes_read)
-
                 progress.update(len(bytes_read))
         finally:
             progress.close()
