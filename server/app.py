@@ -78,7 +78,7 @@ def handle_request(connection: socket.socket):
             result = "There aren't files in the queue."
         else:
             for t in tasks:
-                result = f'Id: {t["id"]}\tInput file: {t["file_name"]}\tTarget format: {t["target_format"]}\tStart: {t["conversion_start"]}\tEnd: {t["conversion_end"]}\n'
+                result = f'{result}Id: {t["id"]}\tInput file: {t["file_name"]}\tTarget format: {t["target_format"]}\tStart: {t["conversion_start"]}\tEnd: {t["conversion_end"]}\n'
 
         connection.sendall(result.encode())
         connection.close()

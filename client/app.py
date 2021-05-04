@@ -1,6 +1,7 @@
 from argparse import ArgumentParser
 import os
 import socket
+import sys
 import time
 import tqdm
 
@@ -13,10 +14,10 @@ def print_formats():
 
 
 parser = ArgumentParser()
-parser = ArgumentParser(prog='PROG', add_help=False)
+parser = ArgumentParser(prog='conversor', add_help=False)
 subparsers = parser.add_subparsers(help="Commands")
 
-group1 = subparsers.add_parser("upload", help="upload file")
+group1 = subparsers.add_parser("convert", help="upload & convert a media file")
 group1.add_argument("-i", "--input", metavar="input",
                     help="The input media file.")
 group1.add_argument("-f", "--format", metavar="format",
@@ -36,7 +37,6 @@ group4.set_defaults(group=4)
 
 args = parser.parse_args()
 
-# parser.print_help()
 SEPARATOR = "|"
 BUFFER_SIZE = 1024
 SERVER_HOST = "35.222.58.153"
@@ -48,19 +48,25 @@ ACTION_RETRIEVE_FILE = "retrieve-file"
 
 action = ""
 
-if args.group == 1:
-    input_file = args.input
-    target_format = args.format
-    output_file = args.output
-    file_size = os.path.getsize(input_file)
-    action = ACTION_UPLOAD_FILE
+try:
+    if args.group == 1:
+        input_file = args.input
+        target_format = args.format
+        output_file = args.output
+        file_size = os.path.getsize(input_file)
+        action = ACTION_UPLOAD_FILE
 
-elif args.group == 2:
-    action = ACTION_SHOW_TASKS
-elif args.group == 3:
-    print_formats()
-else:
+    elif args.group == 2:
+        action = ACTION_SHOW_TASKS
+    elif args.group == 3:
+        print_formats()
+        sys.exit(0)
+    else:
+        parser.print_help()
+        sys.exit(0)
+except:
     parser.print_help()
+    sys.exit(0)
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
