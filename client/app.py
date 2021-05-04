@@ -4,26 +4,31 @@ import socket
 import time
 import tqdm
 
-def printFormats():
+
+def print_formats():
     file = open('formats.txt', 'r')
     text = file.read()
     print(text)
     file.close()
 
+
 parser = ArgumentParser()
-parser= ArgumentParser(prog='PROG', add_help=False)
-subparsers = parser.add_subparsers(help = "Commands")
+parser = ArgumentParser(prog='PROG', add_help=False)
+subparsers = parser.add_subparsers(help="Commands")
 
 group1 = subparsers.add_parser("upload", help="upload file")
-group1.add_argument("-i", "--input", metavar="input", help="The input media file.")
-group1.add_argument("-f", "--format", metavar="format", help="The target format.") 
-group1.add_argument("-o", "--output", metavar="output", help="The output converted file.")
+group1.add_argument("-i", "--input", metavar="input",
+                    help="The input media file.")
+group1.add_argument("-f", "--format", metavar="format",
+                    help="The target format.")
+group1.add_argument("-o", "--output", metavar="output",
+                    help="The output converted file.")
 group1.set_defaults(group=1)
 
 group2 = subparsers.add_parser("tasks", help="show tasks")
 group2.set_defaults(group=2)
 
-group3 = subparsers.add_parser("formats",help="see formats")
+group3 = subparsers.add_parser("formats", help="see formats")
 group3.set_defaults(group=3)
 
 group4 = subparsers.add_parser("help", help="help commands")
@@ -31,7 +36,7 @@ group4.set_defaults(group=4)
 
 args = parser.parse_args()
 
-parser.print_help()
+# parser.print_help()
 SEPARATOR = "|"
 BUFFER_SIZE = 1024
 SERVER_HOST = "35.222.58.153"
@@ -48,12 +53,12 @@ if args.group == 1:
     target_format = args.format
     output_file = args.output
     file_size = os.path.getsize(input_file)
-    action = ACTION_UPLOAD_FILE 
+    action = ACTION_UPLOAD_FILE
 
 elif args.group == 2:
     action = ACTION_SHOW_TASKS
-elif args.group==3:
-    printFormats()
+elif args.group == 3:
+    print_formats()
 else:
     parser.print_help()
 
@@ -67,6 +72,7 @@ print("Connected.\n")
 task_id = ""
 
 if action == ACTION_SHOW_TASKS:
+    print("Showing tasks...\n")
     s.send(f"{action}{SEPARATOR}".encode())
     data = s.recv(BUFFER_SIZE*8)
     print(data.decode())
